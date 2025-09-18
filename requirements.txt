@@ -1,0 +1,6 @@
+# macOS/dev requirements (do NOT use this on the Pi)
+PyQt5>=5.15,<6
+PyQtWebEngine>=5.15,<6
+Flask>=2.2,<3.0
+PyYAML>=6.0
+waitress>=2.1

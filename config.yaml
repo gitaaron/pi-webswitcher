@@ -1,0 +1,3 @@
+# Map short keys to URLs to display. The first entry loads on startup.
+home_hero: "http://192.168.4.21:3000"
+dakboard: "https://dakboard.com/screenPredefined?p=123"
