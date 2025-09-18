@@ -45,8 +45,17 @@ def start_api_server(switch_bus: SwitchBus, routes: Dict[str, str], host: str, p
         switch_bus.switchRequested.emit(key)
         return jsonify({"ok": True, "showing": key})
 
+    # Convenience alias to support `GET /<key>` fast switching
+    @app.get("/<key>")
+    def show_alias(key: str):
+        if key in ("keys", "status", "show"):
+            # avoid shadowing existing endpoints
+            return jsonify({"error": "reserved path"}), 404
+        return show(key)
+
     def _runner():
-        waitress_serve(app, host=host, port=port, threads=2)
+        # Increase threads to handle bursts and reduce latency under concurrent calls
+        waitress_serve(app, host=host, port=port, threads=8)
     t = threading.Thread(target=_runner, daemon=True)
     t.start()
     return t
@@ -75,6 +84,18 @@ class WebPane(QWebEngineView):
         if cache_dir:
             profile.setCachePath(cache_dir)
             profile.setPersistentStoragePath(cache_dir)
+            # Prefer disk cache for persistence; increase capacity for heavy apps
+            try:
+                profile.setHttpCacheType(QWebEngineProfile.DiskHttpCache)
+                # ~256 MB; adjust if running on very constrained devices
+                profile.setHttpCacheMaximumSize(256 * 1024 * 1024)
+            except Exception:
+                pass
+        try:
+            # Keep cookies and storage across sessions to leverage app-level caching
+            profile.setPersistentCookiesPolicy(QWebEngineProfile.ForcePersistentCookies)
+        except Exception:
+            pass
         if user_agent_suffix:
             ua = profile.httpUserAgent() + " " + user_agent_suffix
             profile.setHttpUserAgent(ua)
