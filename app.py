@@ -18,6 +18,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QApplication, QStackedWidget
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEnginePage
 from flask import Flask, jsonify
+from flask_cors import CORS
 from waitress import serve as waitress_serve
 
 class SwitchBus(QtCore.QObject):
@@ -25,6 +26,7 @@ class SwitchBus(QtCore.QObject):
 
 def start_api_server(switch_bus: SwitchBus, routes: Dict[str, str], host: str, port: int):
     app = Flask(__name__)
+    CORS(app)  # Enable CORS for all routes
 
     @app.get("/")
     def root():
