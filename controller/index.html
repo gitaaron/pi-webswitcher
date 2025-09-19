@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Web Switcher Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .status-section {
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .status-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .controls-section {
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2c3e50;
+        }
+
+        .screen-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .screen-button {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screen-button:hover {
+            border-color: #4facfe;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.15);
+        }
+
+        .screen-button.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .screen-button.active::before {
+            content: "✓";
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .screen-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .screen-description {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .refresh-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .refresh-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .refresh-button:active {
+            transform: scale(0.95);
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                border-radius: 16px;
+            }
+            
+            .header {
+                padding: 24px 16px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .status-section,
+            .controls-section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Pi Web Switcher</h1>
+            <p>Control your display screens</p>
+        </div>
+        
+        <div class="status-section">
+            <div class="status-card">
+                <div class="status-label">Currently Showing</div>
+                <div class="status-value" id="currentScreen">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="controls-section">
+            <div class="section-title">Available Screens</div>
+            <div class="loading" id="loadingIndicator">Loading screens...</div>
+            <div class="screen-grid" id="screenGrid">
+            </div>
+        </div>
+        
+        <div class="error" id="errorMessage"></div>
+    </div>
+    
+    <button class="refresh-button" id="refreshButton" title="Refresh">
+        ↻
+    </button>
+
+    <script>
+        class PiWebSwitcherController {
+            constructor() {
+                this.apiBaseUrl = this.detectApiUrl();
+                this.currentStatus = null;
+                this.availableKeys = [];
+                this.init();
+            }
+
+            detectApiUrl() {
+                // Try to detect the API URL based on current host
+                const hostname = window.location.hostname;
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    return `http://${hostname}:8080`;
+                } else {
+                    // Assume the controller is served from the same host as the API
+                    return `http://${hostname}:8080`;
+                }
+            }
+
+            async init() {
+                this.setupEventListeners();
+                await this.loadData();
+                this.startPeriodicRefresh();
+            }
+
+            setupEventListeners() {
+                document.getElementById('refreshButton').addEventListener('click', () => {
+                    this.loadData();
+                });
+            }
+
+            async loadData() {
+                try {
+                    this.showLoading(true);
+                    this.hideError();
+                    this.updateConnectionStatus('connecting');
+
+                    // Load status and keys in parallel
+                    const [statusResponse, keysResponse] = await Promise.all([
+                        this.fetchWithTimeout(`${this.apiBaseUrl}/status`),
+                        this.fetchWithTimeout(`${this.apiBaseUrl}/keys`)
+                    ]);
+
+                    if (!statusResponse.ok || !keysResponse.ok) {
+                        throw new Error('Failed to fetch data from API');
+                    }
+
+                    this.currentStatus = await statusResponse.json();
+                    this.availableKeys = await keysResponse.json();
+
+                    this.updateUI();
+                    this.updateConnectionStatus('connected');
+
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    this.showError(`Connection failed: ${error.message}`);
+                    this.updateConnectionStatus('disconnected');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async fetchWithTimeout(url, timeout = 5000) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
+                
+                try {
+                    const response = await fetch(url, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    return response;
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    throw error;
+                }
+            }
+
+            updateUI() {
+                this.updateCurrentScreen();
+                this.updateScreenButtons();
+            }
+
+            updateCurrentScreen() {
+                const currentScreenElement = document.getElementById('currentScreen');
+                if (this.currentStatus && this.currentStatus.active) {
+                    currentScreenElement.textContent = this.currentStatus.active;
+                } else {
+                    currentScreenElement.textContent = 'Unknown';
+                }
+            }
+
+            updateScreenButtons() {
+                const screenGrid = document.getElementById('screenGrid');
+                screenGrid.innerHTML = '';
+
+                if (!this.availableKeys || this.availableKeys.length === 0) {
+                    const noScreensDiv = document.createElement('div');
+                    noScreensDiv.className = 'loading';
+                    noScreensDiv.textContent = 'No screens available';
+                    screenGrid.appendChild(noScreensDiv);
+                    return;
+                }
+
+                this.availableKeys.forEach(key => {
+                    const button = document.createElement('div');
+                    button.className = 'screen-button';
+                    
+                    if (this.currentStatus && this.currentStatus.active === key) {
+                        button.classList.add('active');
+                    }
+
+                    button.innerHTML = `
+                        <div class="screen-name">${this.formatScreenName(key)}</div>
+                        <div class="screen-description">Click to switch</div>
+                    `;
+
+                    button.addEventListener('click', () => {
+                        this.switchToScreen(key);
+                    });
+
+                    screenGrid.appendChild(button);
+                });
+            }
+
+            formatScreenName(key) {
+                // Convert snake_case or kebab-case to Title Case
+                return key
+                    .replace(/[-_]/g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase());
+            }
+
+            async switchToScreen(key) {
+                try {
+                    this.hideError();
+                    this.showScreenLoading(key, true);
+
+                    const response = await this.fetchWithTimeout(`${this.apiBaseUrl}/show/${encodeURIComponent(key)}`);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to switch screen');
+                    }
+
+                    const result = await response.json();
+                    
+                    // Update local state
+                    if (this.currentStatus) {
+                        this.currentStatus.active = key;
+                    }
+                    
+                    this.updateUI();
+                    
+                    // Show success feedback
+                    this.showTemporarySuccess(`Switched to ${this.formatScreenName(key)}`);
+
+                } catch (error) {
+                    console.error('Error switching screen:', error);
+                    this.showError(`Failed to switch screen: ${error.message}`);
+                } finally {
+                    this.showScreenLoading(key, false);
+                }
+            }
+
+            showLoading(show) {
+                const loadingIndicator = document.getElementById('loadingIndicator');
+                if (loadingIndicator) {
+                    if (show) {
+                        loadingIndicator.classList.add('show');
+                    } else {
+                        loadingIndicator.classList.remove('show');
+                    }
+                }
+            }
+
+            showScreenLoading(key, show) {
+                const screenButtons = document.querySelectorAll('.screen-button');
+                screenButtons.forEach(button => {
+                    const screenName = button.querySelector('.screen-name');
+                    if (screenName && screenName.textContent === this.formatScreenName(key)) {
+                        if (show) {
+                            button.style.opacity = '0.6';
+                            button.style.pointerEvents = 'none';
+                            screenName.textContent = 'Switching...';
+                        } else {
+                            button.style.opacity = '1';
+                            button.style.pointerEvents = 'auto';
+                            screenName.textContent = this.formatScreenName(key);
+                        }
+                    }
+                });
+            }
+
+            showError(message) {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+            }
+
+            hideError() {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.classList.remove('show');
+            }
+
+            showTemporarySuccess(message) {
+                // Create a temporary success message
+                const successElement = document.createElement('div');
+                successElement.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #28a745;
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    z-index: 2000;
+                    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+                `;
+                successElement.textContent = message;
+                document.body.appendChild(successElement);
+
+                setTimeout(() => {
+                    document.body.removeChild(successElement);
+                }, 2000);
+            }
+
+            updateConnectionStatus(status) {
+                const statusElement = document.getElementById('connectionStatus');
+                statusElement.className = `connection-status ${status}`;
+                
+                switch (status) {
+                    case 'connected':
+                        statusElement.textContent = 'Connected';
+                        break;
+                    case 'connecting':
+                        statusElement.textContent = 'Connecting...';
+                        break;
+                    case 'disconnected':
+                        statusElement.textContent = 'Disconnected';
+                        break;
+                }
+            }
+
+            startPeriodicRefresh() {
+                // Refresh every 30 seconds to keep status in sync
+                setInterval(() => {
+                    this.loadData();
+                }, 30000);
+            }
+        }
+
+        // Initialize the controller when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new PiWebSwitcherController();
+        });
+    </script>
+</body>
+</html>
